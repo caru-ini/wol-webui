@@ -1,18 +1,20 @@
 'use client';
 import { AddDevice } from '@/components/add-device';
-import { DeviceCard } from '@/components/device-card';
+import { DeviceCard, deviceDataSchema } from '@/components/device-card';
 import { ReloadCheck } from '@/components/reload-check';
 import { client } from '@/lib/hono';
 import { Status } from '@prisma/client';
 import { useEffect } from 'react';
 import { BsDisplay } from 'react-icons/bs';
 import useSWR from 'swr';
+import { z } from 'zod';
 
 const fetcher = () =>
   client.api.devices
     .$get()
     .then((res) => res.json())
-    .then((res) => res.devices);
+    .then((res) => res.devices)
+    .then((data) => z.array(deviceDataSchema).parse(data));
 
 export default function Home() {
   const {
@@ -58,9 +60,7 @@ export default function Home() {
             <DeviceCard
               key={device.name}
               icon={<BsDisplay />}
-              title={device.name}
-              status={device.status}
-              description={device.status}
+              device={device}
               onPower={() => onPower(device.id)}
             />
           ))}
