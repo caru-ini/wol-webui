@@ -1,6 +1,7 @@
 'use client';
 import { AddDevice } from '@/components/add-device';
 import { DeviceCard } from '@/components/device-card';
+import { ReloadCheck } from '@/components/reload-check';
 import { client } from '@/lib/hono';
 import { Status } from '@prisma/client';
 import { useEffect } from 'react';
@@ -47,7 +48,10 @@ export default function Home() {
 
   return (
     <div className='container mt-8 flex flex-col gap-5'>
-      <h1 className='text-4xl font-bold'>Computers</h1>
+      <div className='flex'>
+        <h1 className='text-4xl font-bold'>Computers</h1>
+        <ReloadCheck />
+      </div>
       <div className='grid grid-cols-1 gap-2 md:grid-cols-3'>
         {devices?.length &&
           devices.map((device) => (

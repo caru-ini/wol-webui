@@ -1,4 +1,4 @@
-import { checkDeviceHealth } from '@/lib/check-health';
+import { updateDeviceStatus } from '@/lib/check-health';
 import prisma from '@/lib/prisma';
 import { sendWolCommand } from '@/lib/send-wol-command';
 import { zValidator } from '@hono/zod-validator';
@@ -16,6 +16,7 @@ export const deviceSchema = z.object({
 });
 
 let isChecking = false;
+let intervalIds: NodeJS.Timeout[] = [];
 
 export const devices = new Hono()
   .get('/', async (c) => {
@@ -25,6 +26,7 @@ export const devices = new Hono()
   .post('/', zValidator('json', deviceSchema), async (c) => {
     const { ipAddress, mac, name, port } = c.req.valid('json');
     const device = await prisma?.device.create({ data: { name, mac, ipAddress, port } });
+    await reloadCheckIntervals();
     return c.json({ device });
   })
   .get('/:id', async (c) => {
@@ -33,12 +35,17 @@ export const devices = new Hono()
     if (!device) return c.json({ message: 'Device not found' }, 404);
     return c.json({ device });
   })
-  .put('/:id', (c) => {
+  .put('/:id', zValidator('json', deviceSchema), async (c) => {
+    const { ipAddress, mac, name, port } = c.req.valid('json');
     const id = c.req.param('id');
+    await prisma?.device.update({ where: { id }, data: { name, mac, ipAddress, port } });
+    await reloadCheckIntervals();
     return c.json({ message: `Updating ${id}` });
   })
-  .delete('/:id', (c) => {
+  .delete('/:id', async (c) => {
     const id = c.req.param('id');
+    await prisma?.device.delete({ where: { id } });
+    await reloadCheckIntervals();
     return c.json({ message: `Deleting ${id}` });
   })
   .post('/:id/wake', async (c) => {
@@ -61,23 +68,33 @@ export const devices = new Hono()
     if (isChecking) return c.json({ message: 'Already checking device health' });
     isChecking = true;
     const devices = await prisma?.device.findMany();
-    devices.forEach((device) => {
-      console.log('Starting health check for', device.ipAddress);
-      setInterval(async () => {
-        console.log('Checking device health', device.ipAddress);
-        const isOnline = await checkDeviceHealth(device.ipAddress);
-        if (isOnline) {
-          await prisma?.device.update({
-            where: { id: device.id, NOT: { status: 'PENDING' } },
-            data: { status: 'ONLINE' },
-          });
-        } else {
-          await prisma?.device.update({
-            where: { id: device.id, NOT: { status: 'PENDING', AND: { status: 'OFFLINE' } } },
-            data: { status: 'OFFLINE' },
-          });
-        }
+    console.log(`[HEALTH CHECK] Starting to check ${devices.length} devices`);
+    devices.forEach(async (device) => {
+      await updateDeviceStatus(device);
+      const intervalId = setInterval(async () => {
+        await updateDeviceStatus(device);
       }, 60000);
+      intervalIds.push(intervalId);
     });
     return c.json({ message: 'Started checking device health' });
+  })
+  .post('/stopCheck', async (c) => {
+    console.log(`[HEALTH CHECK] Stopping checking ${intervalIds.length} devices`);
+    intervalIds.forEach((intervalId) => clearInterval(intervalId));
+    intervalIds = [];
+    isChecking = false;
+    return c.json({ message: 'Stopped checking device health' });
   });
+
+const reloadCheckIntervals = async () => {
+  intervalIds.forEach((intervalId) => clearInterval(intervalId));
+  const devices = await prisma?.device.findMany();
+  devices.forEach(async (device) => {
+    await updateDeviceStatus(device);
+  });
+  intervalIds = devices.map((device) => {
+    return setInterval(async () => {
+      await updateDeviceStatus(device);
+    }, 60000);
+  });
+};
