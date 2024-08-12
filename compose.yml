@@ -7,23 +7,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
     ports:
-      - '5432:5432'
+      - '5555:5432'
     volumes:
       - pg_data:/var/lib/postgresql/data
-    networks:
-      - common_network
 
   wol_webui:
     container_name: wol_webui
     image: wol_webui
     build: .
-    ports:
-      - '3000:3000'
-    networks:
-      - common_network
+    network_mode: 'host'
 
 volumes:
   pg_data:
-
-networks:
-  common_network:
