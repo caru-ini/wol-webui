@@ -11,5 +11,11 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
 
+  wol_webui:
+    container_name: wol_webui
+    image: wol_webui
+    build: .
+    network_mode: 'host'
+
 volumes:
   pg_data:
