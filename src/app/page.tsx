@@ -45,6 +45,12 @@ export default function Home() {
     });
   };
 
+  const onRemove = (id: string) => {
+    client.api.devices[':id'].$delete({ param: { id } }).then(() => {
+      mutate();
+    });
+  };
+
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error</p>;
 
@@ -55,13 +61,14 @@ export default function Home() {
         <ReloadCheck />
       </div>
       <div className='grid grid-cols-1 gap-2 md:grid-cols-3'>
-        {devices?.length &&
+        {devices &&
           devices.map((device) => (
             <DeviceCard
               key={device.name}
               icon={<BsDisplay />}
               device={device}
               onPower={() => onPower(device.id)}
+              onRemove={() => onRemove(device.id)}
             />
           ))}
         <AddDevice />

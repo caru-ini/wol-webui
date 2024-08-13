@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { LuPlus, LuX } from 'react-icons/lu';
+import { useSWRConfig } from 'swr';
 import { z } from 'zod';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -20,15 +21,26 @@ export const addDeviceSchema = z.object({
   ),
 });
 
-export const AddDevice = () => {
+export const AddDevice: React.FC = () => {
+  const { mutate } = useSWRConfig();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const form = useForm<z.infer<typeof addDeviceSchema>>({
     resolver: zodResolver(addDeviceSchema),
   });
 
-  const onSubmit = (values: z.infer<typeof addDeviceSchema>) => {
-    client.api.devices.$post({ json: values });
+  const onSubmit = async (values: z.infer<typeof addDeviceSchema>) => {
+    try {
+      const res = await client.api.devices.$post({ json: values });
+      if (res.ok) {
+        mutate('/api/devices');
+        setIsMenuOpen(false);
+        form.reset();
+      }
+    } catch (error) {
+      console.error('Error adding device:', error);
+    }
   };
+
   return (
     <>
       <div

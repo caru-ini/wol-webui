@@ -22,6 +22,7 @@ type DeviceCardProps = {
   icon: JSX.Element;
   device: z.infer<typeof deviceDataSchema>;
   onPower?: () => void;
+  onRemove?: () => void;
 };
 
 export const DeviceCard: React.FC<DeviceCardProps> = ({ icon, device, onPower }) => {
@@ -109,8 +110,11 @@ const DeviceInfo: React.FC<{ device: z.infer<typeof deviceDataSchema>; onClose: 
           <p>Port: {device.port}</p>
           <p>Status: {device.status}</p>
         </CardContent>
-        <CardFooter>
+        <CardFooter className='flex justify-end gap-x-2'>
           <Button onClick={onClose}>Close</Button>
+          <Button variant='destructive' onClick={onClose}>
+            Remove
+          </Button>
         </CardFooter>
       </Card>
     </div>
