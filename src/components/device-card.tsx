@@ -1,8 +1,10 @@
+import { client } from '@/lib/hono';
 import { cn } from '@/lib/utils';
 import { Status } from '@prisma/client';
 import { useState } from 'react';
 import { GiPowerButton } from 'react-icons/gi';
-import { LuLoader2 } from 'react-icons/lu';
+import { LuLoader2, LuTrash, LuX } from 'react-icons/lu';
+import { useSWRConfig } from 'swr';
 import { z } from 'zod';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -95,6 +97,14 @@ const DeviceInfo: React.FC<{ device: z.infer<typeof deviceDataSchema>; onClose: 
   device,
   onClose,
 }) => {
+  const { mutate } = useSWRConfig();
+  const onRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    client.api.devices[':id'].$delete({ param: { id: device.id } });
+    mutate('/api/devices');
+    onClose();
+  };
+
   return (
     <div
       className='fixed inset-0 z-20 flex items-center justify-center bg-black/50'
@@ -102,7 +112,12 @@ const DeviceInfo: React.FC<{ device: z.infer<typeof deviceDataSchema>; onClose: 
     >
       <Card className='space-y-3 rounded-lg bg-white' onClick={(e) => e.stopPropagation()}>
         <CardHeader>
-          <CardTitle>{device.name}</CardTitle>
+          <CardTitle className='flex items-center justify-between'>
+            {device.name}
+            <Button variant='ghost' onClick={onClose} size='icon' className='p-0.5'>
+              <LuX size={24} />
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p>MAC: {device.mac}</p>
@@ -110,9 +125,9 @@ const DeviceInfo: React.FC<{ device: z.infer<typeof deviceDataSchema>; onClose: 
           <p>Port: {device.port}</p>
           <p>Status: {device.status}</p>
         </CardContent>
-        <CardFooter className='flex justify-end gap-x-2'>
-          <Button onClick={onClose}>Close</Button>
-          <Button variant='destructive' onClick={onClose}>
+        <CardFooter>
+          <Button variant='destructive' onClick={onRemove} className='w-full gap-x-2'>
+            <LuTrash size={16} />
             Remove
           </Button>
         </CardFooter>
