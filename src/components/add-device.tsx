@@ -1,31 +1,38 @@
 'use client';
+
 import { client } from '@/lib/hono';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { LuPlus, LuX } from 'react-icons/lu';
+import { LuPlus } from 'react-icons/lu';
 import { useSWRConfig } from 'swr';
 import { z } from 'zod';
 import { Button } from './ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
 
 export const addDeviceSchema = z.object({
-  name: z.string(),
-  mac: z.string(),
-  ipAddress: z.string(),
+  name: z.string().min(1, 'Name is required'),
+  mac: z.string().regex(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/, 'Invalid MAC address'),
+  ipAddress: z.string().ip('Invalid IP address'),
   port: z.preprocess(
     (val) => parseInt(z.string().parse(val), 10),
-    z.number().positive().min(0).max(65535),
+    z.number().int().positive().min(0).max(65535),
   ),
 });
 
 export const AddDevice: React.FC = () => {
   const { mutate } = useSWRConfig();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const form = useForm<z.infer<typeof addDeviceSchema>>({
     resolver: zodResolver(addDeviceSchema),
+    defaultValues: {
+      name: '',
+      mac: '',
+      ipAddress: '',
+      port: undefined,
+    },
   });
 
   const onSubmit = async (values: z.infer<typeof addDeviceSchema>) => {
@@ -33,7 +40,7 @@ export const AddDevice: React.FC = () => {
       const res = await client.api.devices.$post({ json: values });
       if (res.ok) {
         mutate('/api/devices');
-        setIsMenuOpen(false);
+        setOpen(false);
         form.reset();
       }
     } catch (error) {
@@ -42,99 +49,77 @@ export const AddDevice: React.FC = () => {
   };
 
   return (
-    <>
-      <div
-        className='flex items-center gap-2 rounded-md border border-border p-3'
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-      >
-        <div className='size-fit rounded-sm border border-border p-2'>
-          <LuPlus />
-        </div>
-        <p>Add device</p>
-      </div>
-      {isMenuOpen && (
-        <div className='fixed inset-0 bg-black/50' onClick={() => setIsMenuOpen(false)}>
-          <Card
-            className='absolute left-1/2 top-1/2 w-[500px] -translate-x-1/2 -translate-y-1/2'
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CardHeader>
-              <CardTitle className='flex items-center justify-between'>
-                Add Device
-                <Button
-                  variant='ghost'
-                  onClick={() => setIsMenuOpen(false)}
-                  size={'icon'}
-                  className='p-1'
-                >
-                  <LuX size={24} />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-7'>
-                  <FormField
-                    control={form.control}
-                    name='name'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder='Name' {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='mac'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>mac Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder='AA:BB:CC:DD:EE:FF' {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='ipAddress'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>IP Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder='IP Address' {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='port'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Port</FormLabel>
-                        <FormControl>
-                          <Input min={0} max={65535} type='number' placeholder='Port' {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
-            </CardContent>
-            <CardFooter className='justify-end'>
-              <Button onClick={form.handleSubmit(onSubmit)}>Add</Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
-    </>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger>
+        <Button variant='outline' className='size-full justify-start'>
+          <LuPlus className='mr-2 box-content size-4 rounded-md border border-border p-1.5' />
+          Add device
+        </Button>
+      </DialogTrigger>
+      <DialogContent className='sm:max-w-[425px]'>
+        <DialogHeader>
+          <DialogTitle>Add Device</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+            <FormField
+              control={form.control}
+              name='name'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder='Device name' {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='mac'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>MAC Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder='AA:BB:CC:DD:EE:FF' {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='ipAddress'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>IP Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder='192.168.1.1' {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='port'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Port</FormLabel>
+                  <FormControl>
+                    <Input type='number' placeholder='8080' {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type='submit' className='w-full'>
+              Add Device
+            </Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };

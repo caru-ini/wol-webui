@@ -68,7 +68,6 @@ export default function Home() {
               icon={<BsDisplay />}
               device={device}
               onPower={() => onPower(device.id)}
-              onRemove={() => onRemove(device.id)}
             />
           ))}
         <AddDevice />
