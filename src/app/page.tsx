@@ -1,6 +1,7 @@
 'use client';
 import { AddDevice } from '@/components/add-device';
 import { DeviceCard, deviceDataSchema } from '@/components/device-card';
+import { Loader } from '@/components/loader';
 import { ReloadCheck } from '@/components/reload-check';
 import { client } from '@/lib/hono';
 import { Status } from '@prisma/client';
@@ -51,7 +52,7 @@ export default function Home() {
     });
   };
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <Loader />;
   if (error) return <p>Error</p>;
 
   return (
